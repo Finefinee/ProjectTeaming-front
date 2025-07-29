@@ -27,8 +27,7 @@ export default function CreateInvitePage() {
     projectMemberUsername: ''
   });
 
-    // 컴포넌트 렌더링 시 디버깅
-  console.log('CreateInvitePage 렌더링');
+    // 컴포넌트 렌더링 완료
 
   // 프로젝트 목록 로드
   useEffect(() => {
@@ -46,7 +45,7 @@ export default function CreateInvitePage() {
           console.log('=== 프로젝트 목록 상세 ===');
           
           // 백엔드에서 잘못된 형식으로 오는 데이터 정리
-          const cleanedProjects = response.data.map((project: any) => {
+          const cleanedProjects = response.data.map((project: any, index: number) => {
             let cleanedProjectMember = project.projectMember;
             
             // projectMember가 Java toString() 형태인 경우 정리
@@ -61,27 +60,30 @@ export default function CreateInvitePage() {
             
             return {
               ...project,
+              id: project.id || (index + 1), // ID가 없으면 임시 ID 할당
               projectMember: cleanedProjectMember
             };
           });
           
           cleanedProjects.forEach((project: Project, index: number) => {
-            console.log(`프로젝트 ${index}: ID=${project.id} (타입: ${typeof project.id}), Title=${project.title}, Manager=${project.projectManager}`);
+            console.log(`프로젝트 ${index}: ${project.title} (팀장: ${project.projectManager})`);
           });
           
           // 현재 사용자 정보 확인
           const currentUser = user || JSON.parse(localStorage.getItem('user') || '{}');
           console.log('현재 사용자:', currentUser);
+          console.log('사용자 username:', currentUser?.username);
           
           if (currentUser && currentUser.username) {
             // 팀장인 프로젝트만 필터링
             const userManagedProjects = cleanedProjects.filter((project: Project) => {
               const isManager = project.projectManager === currentUser.username;
-              console.log(`프로젝트 "${project.title}": 매니저=${project.projectManager}, 현재유저=${currentUser.username}, 팀장여부=${isManager}`);
+              console.log(`프로젝트 "${project.title}": 매니저="${project.projectManager}", 현재유저="${currentUser.username}", 팀장여부=${isManager}`);
               return isManager;
             });
             
             console.log(`총 ${cleanedProjects.length}개 프로젝트 중 ${userManagedProjects.length}개가 팀장 프로젝트`);
+            
             setProjects(cleanedProjects);
             setManagedProjects(userManagedProjects);
           } else {
@@ -100,8 +102,9 @@ export default function CreateInvitePage() {
   }, [token]);
 
   // formData 변화 감지
+  // formData 변경 감지
   useEffect(() => {
-    console.log('formData 변경:', formData);
+    // 필요시 디버깅용
   }, [formData]);
 
   const handleInputChange = (field: keyof CreateInviteDto, value: string | number) => {
@@ -266,26 +269,13 @@ export default function CreateInvitePage() {
                   value={formData.projectId || ''}
                   onChange={(e) => {
                     const selectedValue = e.target.value;
-                    console.log(`=== 프로젝트 선택 이벤트 ===`);
-                    console.log(`선택된 값: "${selectedValue}" (타입: ${typeof selectedValue})`);
-                    console.log(`현재 formData.projectId: ${formData.projectId}`);
                     
                     if (selectedValue && selectedValue !== '') {
                       const id = parseInt(selectedValue, 10);
-                      console.log(`변환된 ID: ${id} (타입: ${typeof id})`);
                       
                       if (!isNaN(id) && id > 0) {
-                        console.log(`ID 유효함, formData 업데이트 중...`);
-                        setFormData(prev => {
-                          const newData = { ...prev, projectId: id };
-                          console.log(`formData 업데이트: ${JSON.stringify(prev)} -> ${JSON.stringify(newData)}`);
-                          return newData;
-                        });
-                      } else {
-                        console.error(`유효하지 않은 ID: ${id}`);
+                        setFormData(prev => ({ ...prev, projectId: id }));
                       }
-                    } else {
-                      console.log(`빈 값 또는 기본값 선택됨`);
                     }
                   }}
                   style={{
@@ -301,11 +291,18 @@ export default function CreateInvitePage() {
                   <option value="" key="placeholder">
                     {managedProjects.length === 0 ? '팀장인 프로젝트가 없습니다' : '프로젝트를 선택하세요'}
                   </option>
-                  {managedProjects.map((project: Project) => (
-                    <option key={`project-${project.id}`} value={project.id}>
-                      {project.title}
-                    </option>
-                  ))}
+                  {managedProjects.map((project: Project) => {
+                    const optionValue = project.id || 0;
+                    
+                    return (
+                      <option 
+                        key={`project-${optionValue}`} 
+                        value={optionValue}
+                      >
+                        {project.title}
+                      </option>
+                    );
+                  })}
                 </select>
                 
                 {managedProjects.length === 0 && (
@@ -381,3 +378,4 @@ export default function CreateInvitePage() {
     </Box>
   );
 }
+
